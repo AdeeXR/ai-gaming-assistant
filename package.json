@@ -9,8 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@genkit-ai/flow": "^0.5.17",
-    "@genkit-ai/google-cloud": "^1.14.1",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-separator": "^1.1.7",
@@ -18,6 +16,7 @@
     "@supabase/supabase-js": "^2.50.5",
     "class-variance-authority": "^0.7.1",
     "firebase": "^11.9.1",
+    "firebase-admin": "^13.4.0",
     "lucide-react": "^0.524.0",
     "next": "15.3.4",
     "next-auth": "^4.24.11",

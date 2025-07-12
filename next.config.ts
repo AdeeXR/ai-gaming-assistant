@@ -1,14 +1,16 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // 'serverComponentsExternalPackages' has moved from 'experimental'
+  // 'serverComponentsExternalPackages' has moved to 'serverExternalPackages'
   serverExternalPackages: [
-    '@google-cloud/storage',
-    'firebase-admin',
-    '@genkit-ai/core',
-    '@genkit-ai/flow',
-    '@genkit-ai/google-cloud',
-    '@supabase/supabase-js', // Add this as we are using Supabase
+    // Removed Genkit packages:
+    // '@genkit-ai/core',
+    // '@genkit-ai/flow',
+    // '@genkit-ai/google-cloud',
+    // Keep other necessary packages:
+    '@google-cloud/storage', // Keep if you might use GCS for other purposes, otherwise can remove
+    'firebase-admin', // Essential for Firebase Admin SDK
+    '@supabase/supabase-js', // Essential for Supabase SDK
   ],
   images: {
     domains: ['placehold.co'],
