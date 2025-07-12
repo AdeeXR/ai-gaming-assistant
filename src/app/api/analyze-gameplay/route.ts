@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     `;
 
     // Prepare the chat history for the Gemini API request
-    let chatHistory = [];
+    const chatHistory = []; // <--- CHANGE: Changed 'let' to 'const' here
     chatHistory.push({ role: "user", parts: [{ text: prompt }] });
 
     // Define the payload for the Gemini API request, including the response schema
