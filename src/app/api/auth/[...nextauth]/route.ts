@@ -40,8 +40,8 @@ const firebaseClientAuth = getAuth(firebaseClientApp);
 const firebaseClientDb = getFirestore(firebaseClientApp);
 const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || 'default-app-id';
 
-// Define the NextAuth.js options with explicit AuthOptions type
-export const authOptions: AuthOptions = {
+// Define the NextAuth.js options
+const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -84,8 +84,8 @@ export const authOptions: AuthOptions = {
             };
           }
           return null;
-        } catch (error: unknown) { // Changed 'any' to 'unknown'
-          const firebaseError = error as { code?: string; message?: string }; // Type assertion for Firebase error structure
+        } catch (error: unknown) {
+          const firebaseError = error as { code?: string; message?: string };
           console.error("Firebase Auth Error:", firebaseError.code, firebaseError.message);
           if (firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/invalid-credential') {
             throw new Error('Invalid email or password.');
@@ -97,7 +97,7 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async jwt({ token, user, account }: { token: JWT; user: User; account: Account | null }) { // Added eslint-disable for 'account'
+    async jwt({ token, user, account }: { token: JWT; user: User; account: Account | null }) {
       if (user) {
         token.id = user.id;
       }
@@ -118,6 +118,9 @@ export const authOptions: AuthOptions = {
   },
   debug: process.env.NODE_ENV === 'development',
 };
+
+// Export authOptions under a different name for use in other files
+export { authOptions as authConfig }; // <--- ADD THIS LINE
 
 const handler = NextAuth(authOptions);
 
