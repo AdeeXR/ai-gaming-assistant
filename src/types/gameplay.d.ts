@@ -1,5 +1,7 @@
 // src/types/gameplay.d.ts
 
+import { Timestamp } from 'firebase/firestore'; // <--- ADD THIS IMPORT
+
 export interface AiAnalysisResult {
   analysis: string;
   suggestions: string[];
@@ -15,7 +17,7 @@ export interface ApiErrorResponse {
 export interface GameplayLog {
   id: string;
   userId: string;
-  timestamp: Date;
+  timestamp: Timestamp; // <--- CHANGE THIS FROM Date to Timestamp
   gameTitle?: string;
   logContent?: string;
   analysis?: AiAnalysisResult;

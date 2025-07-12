@@ -1,7 +1,7 @@
 // src/lib/firebase.tsx
 // This file sets up Firebase client-side services and provides them via React Context.
 
-"use client"; // <--- ADD THIS LINE AT THE VERY TOP
+"use client"; // <--- This must be the very first line
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User as FirebaseAuthUser } from 'firebase/auth';
@@ -27,7 +27,8 @@ export const useFirebase = () => useContext(FirebaseContext);
 
 // FirebaseProvider component to initialize Firebase and provide services to its children
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [firebaseApp, setFirebaseApp] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+  const [firebaseApp, setFirebaseApp] = useState<any>(null); // Line 30: Add eslint-disable-next-line
   const [dbInstance, setDbInstance] = useState<ReturnType<typeof getFirestore> | null>(null);
   const [authInstance, setAuthInstance] = useState<ReturnType<typeof getAuth> | null>(null);
   const [currentUser, setCurrentUser] = useState<FirebaseAuthUser | null>(null);
