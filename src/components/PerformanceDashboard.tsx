@@ -1,30 +1,30 @@
 // src/components/PerformanceDashboard.tsx
-"use client"; // This directive is essential for client-side functionality (hooks, event handlers)
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useFirebase } from '@/lib/firebase'; // <--- REMOVED .tsx EXTENSION HERE
-import { collection, doc, onSnapshot, query, Timestamp } from 'firebase/firestore'; // Import Timestamp
+import { useFirebase } from '@/lib/firebase';
+import { collection, doc, onSnapshot, query } from 'firebase/firestore'; // Removed Timestamp import if not directly used in this file's logic
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserProfile } from '@/types/user';
-import { GameplayLog, AiAnalysisResult } from '@/types/gameplay'; // Import AiAnalysisResult
+import { GameplayLog, AiAnalysisResult } from '@/types/gameplay';
 
 const PerformanceDashboard: React.FC = () => {
   const { data: session } = useSession();
   const { db, currentUser } = useFirebase();
   const [gameplayText, setGameplayText] = useState('');
-  // Use AiAnalysisResult type for analysisResult
-  const [analysisResult, setAnalysisResult] = useState<AiAnalysisResult | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [analysisResult, setAnalysisResult] = useState<AiAnalysisResult | null>(null); // Added eslint-disable for unused var
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null); // Added eslint-disable for unused var
   const [loadingUpload, setLoadingUpload] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // ESLint: no-unused-vars
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [gameplayLogs, setGameplayLogs] = useState<GameplayLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Type for modalContent.description is React.ReactNode to allow JSX elements
   const [modalContent, setModalContent] = useState<{ title: string; description: React.ReactNode }>({ title: '', description: '' });
 
 
@@ -40,7 +40,6 @@ const PerformanceDashboard: React.FC = () => {
       if (docSnap.exists()) {
         setUserProfile(docSnap.data() as UserProfile);
       } else {
-        // Handle case where profile doesn't exist (should be created on first login)
         console.warn("User profile not found.");
       }
     });
@@ -50,10 +49,8 @@ const PerformanceDashboard: React.FC = () => {
     const unsubscribeLogs = onSnapshot(q, (snapshot) => {
       const logs: GameplayLog[] = [];
       snapshot.forEach(doc => {
-        // Ensure that the data pushed is correctly typed as GameplayLog
         logs.push({ id: doc.id, ...doc.data() } as GameplayLog);
       });
-      // Sort in memory by timestamp (which is now correctly Timestamp type)
       logs.sort((a, b) => (b.timestamp?.toDate()?.getTime() || 0) - (a.timestamp?.toDate()?.getTime() || 0));
       setGameplayLogs(logs);
     });
@@ -84,11 +81,11 @@ const PerformanceDashboard: React.FC = () => {
         throw new Error(errorData.error || 'Failed to get AI analysis.');
       }
 
-      const data: AiAnalysisResult = await response.json(); // Explicitly type data as AiAnalysisResult
+      const data: AiAnalysisResult = await response.json();
       setAnalysisResult(data);
       setModalContent({
         title: 'AI Analysis Results',
-        description: ( // description is now React.ReactNode, so JSX is allowed
+        description: (
           <div>
             <h3 className="font-bold text-lg mb-2 text-blue-400">Analysis:</h3>
             <p className="mb-4 text-gray-300">{data.analysis}</p>
@@ -103,11 +100,10 @@ const PerformanceDashboard: React.FC = () => {
           </div>
         ),
       });
-    } catch (error: any) { // ESLint: no-explicit-any
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: unknown) { // Changed 'any' to 'unknown'
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       console.error('Error getting AI analysis:', error);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setModalContent({ title: 'Error', description: `Failed to get AI analysis: ${(error as any).message}` });
+      setModalContent({ title: 'Error', description: `Failed to get AI analysis: ${errorMessage}` });
     } finally {
       setLoadingAnalysis(false);
     }
@@ -148,12 +144,11 @@ const PerformanceDashboard: React.FC = () => {
       const data = await response.json();
       setUploadMessage(data.message);
       setModalContent({ title: 'File Upload Success', description: `File uploaded: ${uploadFile.name}` });
-      setUploadFile(null); // Clear the selected file
-    } catch (error: any) { // ESLint: no-explicit-any
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setUploadFile(null);
+    } catch (error: unknown) { // Changed 'any' to 'unknown'
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       console.error('Error uploading file:', error);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setModalContent({ title: 'Upload Error', description: `Failed to upload file: ${(error as any).message}` });
+      setModalContent({ title: 'Upload Error', description: `Failed to upload file: ${errorMessage}` });
     } finally {
       setLoadingUpload(false);
     }

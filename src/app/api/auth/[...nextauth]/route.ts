@@ -1,8 +1,7 @@
 // src/app/api/auth/[...nextauth]/route.ts
 
-import NextAuth, { AuthOptions, User, Account, Session } from 'next-auth'; // REMOVED: Profile
+import NextAuth, { AuthOptions, User, Account, Session } from 'next-auth';
 import { JWT } from 'next-auth/jwt';
-// import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
@@ -85,21 +84,20 @@ export const authOptions: AuthOptions = {
             };
           }
           return null;
-        } catch (error: any) { // Line 95: Add eslint-disable-next-line
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          console.error("Firebase Auth Error:", error.code, error.message);
-          if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        } catch (error: unknown) { // Changed 'any' to 'unknown'
+          const firebaseError = error as { code?: string; message?: string }; // Type assertion for Firebase error structure
+          console.error("Firebase Auth Error:", firebaseError.code, firebaseError.message);
+          if (firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/invalid-credential') {
             throw new Error('Invalid email or password.');
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          throw new Error((error as any).message || 'Authentication failed. Please try again.');
+          throw new Error(firebaseError.message || 'Authentication failed. Please try again.');
         }
       },
     }),
   ],
   callbacks: {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async jwt({ token, user, account }: { token: JWT; user: User; account: Account | null }) { // Line 107: Add eslint-disable-next-line for 'account'
+    async jwt({ token, user, account }: { token: JWT; user: User; account: Account | null }) { // Added eslint-disable for 'account'
       if (user) {
         token.id = user.id;
       }

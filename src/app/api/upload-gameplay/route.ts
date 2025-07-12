@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   try {
     // Upload file to Supabase Storage
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { data, error: uploadError } = await supabase.storage // Line 54: Add eslint-disable-next-line
+    const { data, error: uploadError } = await supabase.storage
       .from(SUPABASE_BUCKET_NAME)
       .upload(fileName, fileBuffer, {
         contentType: file.type,
@@ -88,10 +88,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: 'File uploaded and metadata saved.', fileUrl: fileUrl }, { status: 200 });
 
-  } catch (error: any) { // Line 90: Add eslint-disable-next-line
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: unknown) { // Changed 'any' to 'unknown'
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     console.error('File upload error:', error);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return NextResponse.json({ error: `Failed to upload file: ${(error as any).message}` }, { status: 500 });
+    return NextResponse.json({ error: `Failed to upload file: ${errorMessage}` }, { status: 500 });
   }
 }

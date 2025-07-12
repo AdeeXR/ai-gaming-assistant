@@ -4,10 +4,11 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { useFirebase } from '@/lib/firebase'; // Assuming useFirebase is in src/lib/firebase.tsx
-import { Button } from '@/components/ui/button'; // Assuming you have a button component
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'; // Assuming dialog components
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // Removed getAuth as it's not directly used here
+import { useFirebase } from '@/lib/firebase';
+import { Button } from '@/components/ui/button';
+// Removed DialogTrigger as it's not directly used in the JSX of this component
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,15 +16,15 @@ const LoginForm: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
-  const { auth } = useFirebase(); // Get Firebase auth instance from context
+  const { auth } = useFirebase();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    setIsModalOpen(true); // Open modal on auth attempt
+    setIsModalOpen(true);
 
     if (!auth) {
       setError("Firebase Auth not initialized.");
@@ -32,16 +33,14 @@ const LoginForm: React.FC = () => {
 
     try {
       if (isRegistering) {
-        // Register new user with Firebase Email/Password
         await createUserWithEmailAndPassword(auth, email, password);
         setSuccessMessage('Registration successful! You can now log in.');
-        setIsRegistering(false); // Switch to login mode after registration
+        setIsRegistering(false);
         setEmail('');
         setPassword('');
       } else {
-        // Log in user with NextAuth.js Credentials provider
         const result = await signIn('credentials', {
-          redirect: false, // Prevent NextAuth.js from redirecting
+          redirect: false,
           email,
           password,
         });
@@ -50,41 +49,27 @@ const LoginForm: React.FC = () => {
           setError(result.error);
         } else {
           setSuccessMessage('Login successful!');
-          router.push('/dashboard'); // Redirect to dashboard on success
+          router.push('/dashboard');
         }
       }
-    } catch (err: any) { // Line 40: Add eslint-disable-next-line
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: unknown) { // Changed 'any' to 'unknown'
+      const firebaseError = err as { code?: string; message?: string };
       console.error('Authentication error:', err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((err as any).message || 'An unexpected error occurred during authentication.');
+      if (firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/invalid-credential') {
+        setError('Invalid email or password.');
+      } else {
+        setError(firebaseError.message || 'An unexpected error occurred during authentication.');
+      }
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleGoogleSignIn = async () => { // Added eslint-disable for unused function
     setError(null);
     setSuccessMessage(null);
-    setIsModalOpen(true); // Open modal on auth attempt
-
-    // NOTE: Google Sign-In is disabled in NextAuth.js config due to your GCP account issue.
-    // This button will not work as expected.
+    setIsModalOpen(true);
     setError("Google Sign-In is currently disabled. Please use Email and Password.");
-    // try {
-    //   const result = await signIn('google', { redirect: false });
-    //   if (result?.error) {
-    //     setError(result.error);
-    //   } else {
-    //     setSuccessMessage('Google login successful!');
-    //     router.push('/dashboard');
-    //   }
-    // } catch (err: any) { // Line 58: Add eslint-disable-next-line
-    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    //   console.error('Google sign-in error:', err);
-    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    //   setError((err as any).message || 'An unexpected error occurred during Google sign-in.');
-    // }
   };
-
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
@@ -135,16 +120,6 @@ const LoginForm: React.FC = () => {
             {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
           </button>
         </div>
-
-        {/* Removed Google Sign-In button as it's disabled */}
-        {/* <div className="mt-6">
-          <Button
-            onClick={handleGoogleSignIn}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline transition duration-200"
-          >
-            Sign in with Google
-          </Button>
-        </div> */}
 
         {/* Modal for messages */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

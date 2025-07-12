@@ -28,10 +28,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(analysisResult, { status: 200 });
 
-  } catch (error: any) { // Line 31: Add eslint-disable-next-line
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: unknown) { // Changed 'any' to 'unknown' for better type safety
+    // Type guard to check if error is an instance of Error
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     console.error('API Route Error /analyze-gameplay:', error);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return NextResponse.json({ error: 'Failed to analyze gameplay via AI.', details: (error as any).message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to analyze gameplay via AI.', details: errorMessage }, { status: 500 });
   }
 }
