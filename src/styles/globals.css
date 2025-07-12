@@ -1,0 +1,29 @@
+/* Tailwind CSS v4 directives:
+   @tailwind base and @tailwind components are no longer needed
+   as their functionality is now integrated into @tailwind utilities.
+*/
+@tailwind utilities;
+
+/*
+  These CSS variables define your theme colors.
+  They are configured to switch based on user's dark mode preference.
+*/
+:root {
+  /* Fallback or light mode default */
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111827; /* Our desired gray-900 for dark mode background */
+    --foreground: #F9FAFB; /* Our desired gray-50 for dark mode text */
+  }
+}
+
+/* Apply general body styles, using your CSS variables and our desired Inter font */
+body {
+  background: var(--background); /* Uses the background variable (dark in dark mode) */
+  color: var(--foreground);     /* Uses the foreground variable (light in dark mode) */
+  font-family: 'Inter', sans-serif; /* Apply the Inter font */
+}
