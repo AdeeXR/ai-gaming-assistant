@@ -1,7 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google"; // Keep your Geist font imports
-import "./globals.css";
+import '@/styles/globals.css';
 import { SessionProvider } from 'next-auth/react'; // Import SessionProvider
 import { FirebaseProvider } from '@/lib/firebase'; // Import FirebaseProvider
 
