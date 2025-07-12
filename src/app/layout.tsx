@@ -1,23 +1,17 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google"; // Keep your Geist font imports
-import '@/styles/globals.css';
-import { SessionProvider } from 'next-auth/react'; // Import SessionProvider
-import { FirebaseProvider } from '@/lib/firebase'; // Import FirebaseProvider
+import type { Metadata } from 'next';
+import { GeistSans, GeistMono } from 'geist/font'; // Corrected import for Geist fonts
+import '@/styles/globals.css'; // Global CSS import
+import AuthProvider from '@/components/AuthProvider'; // NextAuth.js session provider
+import { FirebaseProvider } from '@/lib/firebase'; // Firebase context provider
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Initialize Geist fonts
+const geistSans = GeistSans; // Use directly from geist/font
+const geistMono = GeistMono; // Use directly from geist/font
 
 export const metadata: Metadata = {
-  title: "AI Gaming Assistant", // You might want to update this title
-  description: "AI-powered player assistance for gaming and esports", // You might want to update this description
+  title: 'AI Gaming Assistant', // Your project title
+  description: 'AI-powered insights for improving your gameplay.', // Your project description
 };
 
 export default function RootLayout({
@@ -28,14 +22,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        // Apply Geist font classes to the body
+        className={`${geistSans.className} ${geistMono.className} antialiased`}
       >
-        {/* Wrap your children with SessionProvider and FirebaseProvider */}
-        <SessionProvider>
+        {/* Wrap the entire application with AuthProvider first */}
+        <AuthProvider>
+          {/* Then wrap with FirebaseProvider. Components using Firebase context must be inside this. */}
           <FirebaseProvider>
             {children}
           </FirebaseProvider>
-        </SessionProvider>
+        </AuthProvider>
       </body>
     </html>
   );
