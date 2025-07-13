@@ -1,7 +1,7 @@
-/* Tailwind CSS v4 directives:
-   @tailwind base and @tailwind components are no longer needed
-   as their functionality is now integrated into @tailwind utilities.
-*/
+/* src/styles/globals.css */
+
+/* For Tailwind CSS v4, only @tailwind utilities is needed.
+   Base and components are integrated or handled differently. */
 @tailwind utilities;
 
 /*
@@ -24,6 +24,16 @@
 /* Apply general body styles, using your CSS variables and our desired Inter font */
 body {
   background: var(--background); /* Uses the background variable (dark in dark mode) */
-  color: var(--foreground);     /* Uses the foreground variable (light in dark mode) */
+  color: var(--foreground);      /* Uses the foreground variable (light in dark mode) */
   font-family: 'Inter', sans-serif; /* Apply the Inter font */
+  min-height: 100vh; /* Ensure body takes full viewport height */
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure full height for Next.js app root div */
+#__next {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }

@@ -1,13 +1,12 @@
 // src/components/LoginForm.tsx
-"use client";
+"use client"; // This must be the very first line of code after comments
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { createUserWithEmailAndPassword } from 'firebase/auth'; // Removed getAuth as it's not directly used here
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useFirebase } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
-// Removed DialogTrigger as it's not directly used in the JSX of this component
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const LoginForm: React.FC = () => {
@@ -52,7 +51,7 @@ const LoginForm: React.FC = () => {
           router.push('/dashboard');
         }
       }
-    } catch (err: unknown) { // Changed 'any' to 'unknown'
+    } catch (err: unknown) {
       const firebaseError = err as { code?: string; message?: string };
       console.error('Authentication error:', err);
       if (firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/invalid-credential') {
@@ -64,7 +63,7 @@ const LoginForm: React.FC = () => {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleGoogleSignIn = async () => { // Added eslint-disable for unused function
+  const handleGoogleSignIn = async () => {
     setError(null);
     setSuccessMessage(null);
     setIsModalOpen(true);
@@ -127,8 +126,9 @@ const LoginForm: React.FC = () => {
             <DialogHeader>
               <DialogTitle className="text-blue-400">Authentication Message</DialogTitle>
               <DialogDescription className="text-gray-300">
-                {error && <p className="text-red-500">{error}</p>}
-                {successMessage && <p className="text-green-500">{successMessage}</p>}
+                {/* Changed <p> to <div> to avoid nested <p> tags */}
+                {error && <div className="text-red-500">{error}</div>}
+                {successMessage && <div className="text-green-500">{successMessage}</div>}
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end">

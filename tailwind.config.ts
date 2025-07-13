@@ -5,13 +5,16 @@ const config: Config = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    // Crucial: Ensure this line is present to scan all files in src/
+    './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'], // This is good
       },
       colors: {
+        // Your custom colors are fine here
         'gray-900': '#111827',
         'gray-800': '#1F2937',
         'gray-700': '#374151',
