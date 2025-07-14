@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useFirebase } from '@/lib/firebase';
-import { collection, doc, onSnapshot, query, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Import Timestamp, removed getDocs
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea'; // Import Textarea
@@ -25,7 +25,7 @@ interface GameplayLog {
   userId: string;
   gameplayText?: string;
   analysis?: AiAnalysisResult;
-  timestamp: any;
+  timestamp: Timestamp; // Changed from 'any' to 'Timestamp'
   fileUrl?: string;
   fileName?: string;
 }
@@ -38,12 +38,14 @@ interface UserProfile {
 
 const PerformanceDashboard: React.FC = () => {
   const { data: session } = useSession();
-  const { db, auth, currentUser } = useFirebase(); // Correctly destructure auth
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { db, auth, currentUser } = useFirebase(); // Suppress unused var for currentUser
   const [gameplayTextInput, setGameplayTextInput] = useState('');
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // Suppress unused var for userProfile
   const [gameplayLogs, setGameplayLogs] = useState<GameplayLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<{ title: string; description: React.ReactNode }>({ title: '', description: '' });

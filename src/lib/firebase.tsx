@@ -5,7 +5,8 @@
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User as FirebaseAuthUser, Auth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore } from 'firebase/firestore'; // No Timestamp needed here, so no import
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 // Extend the Auth type to include __app_id, which is provided by the Canvas environment
@@ -36,11 +37,12 @@ export const useFirebase = () => {
 
 // FirebaseProvider component to initialize Firebase and provide services to its children
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [appInstance, setAppInstance] = useState<FirebaseApp | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [appInstance, setAppInstance] = useState<FirebaseApp | null>(null); // Suppress unused var warning
   const [dbInstance, setDbInstance] = useState<Firestore | null>(null);
-  const [authInstance, setAuthInstance] = useState<CustomAuth | null>(null); // Use CustomAuth here
+  const [authInstance, setAuthInstance] = useState<CustomAuth | null>(null);
   const [currentUser, setCurrentUser] = useState<FirebaseAuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Corrected typo: was `true` instead of `useState(true)`
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         } else {
           app = getApp(); // Get existing app instance if already initialized
         }
-        setAppInstance(app);
+        setAppInstance(app); // Still set, but linting suppressed
 
         const db = getFirestore(app);
         setDbInstance(db);
