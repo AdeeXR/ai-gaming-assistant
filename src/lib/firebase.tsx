@@ -3,88 +3,120 @@
 
 "use client"; // <--- This must be the very first line
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, User as FirebaseAuthUser } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, onAuthStateChanged, User as FirebaseAuthUser, Auth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+
+// Extend the Auth type to include __app_id, which is provided by the Canvas environment
+interface CustomAuth extends Auth {
+  __app_id?: string;
+}
 
 // Define the shape of the Firebase context
 interface FirebaseContextType {
-  db: ReturnType<typeof getFirestore> | null;
-  auth: ReturnType<typeof getAuth> | null;
+  db: Firestore | null;
+  auth: CustomAuth | null; // Use CustomAuth here
   currentUser: FirebaseAuthUser | null;
+  loading: boolean;
+  error: string | null;
 }
 
 // Create the Firebase context with default null values
-const FirebaseContext = createContext<FirebaseContextType>({
-  db: null,
-  auth: null,
-  currentUser: null,
-});
+const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 // Custom hook to easily access Firebase services from any component
-export const useFirebase = () => useContext(FirebaseContext);
+export const useFirebase = () => {
+  const context = useContext(FirebaseContext);
+  if (context === undefined) {
+    throw new Error('useFirebase must be used within a FirebaseProvider');
+  }
+  return context;
+};
 
 // FirebaseProvider component to initialize Firebase and provide services to its children
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  const [firebaseApp, setFirebaseApp] = useState<any>(null); // Line 30: Add eslint-disable-next-line
-  const [dbInstance, setDbInstance] = useState<ReturnType<typeof getFirestore> | null>(null);
-  const [authInstance, setAuthInstance] = useState<ReturnType<typeof getAuth> | null>(null);
+  const [appInstance, setAppInstance] = useState<FirebaseApp | null>(null);
+  const [dbInstance, setDbInstance] = useState<Firestore | null>(null);
+  const [authInstance, setAuthInstance] = useState<CustomAuth | null>(null); // Use CustomAuth here
   const [currentUser, setCurrentUser] = useState<FirebaseAuthUser | null>(null);
-  const [loading, setLoading] = useState(true); // Track loading state for auth
-
-  // Ensure environment variables are defined before attempting to initialize Firebase
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-
-  // Check if all required Firebase config variables are present
-  const isFirebaseConfigComplete = apiKey && authDomain && projectId && messagingSenderId && appId;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If Firebase config is incomplete, log an error and stop loading
-    if (!isFirebaseConfigComplete) {
-      console.error("Firebase configuration is incomplete. Check your .env.local file and Vercel environment variables.");
-      setLoading(false); // Stop loading if config is bad
-      return; // Exit useEffect early
-    }
+    const initFirebase = async () => {
+      try {
+        // These are global variables provided by the Canvas environment.
+        // They are checked for existence before use, as they are undefined in local dev.
+        const canvasAppId = typeof __app_id !== 'undefined' ? __app_id : null;
+        const canvasFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const canvasInitialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    // Construct firebaseConfig object only if all parts are present
-    const firebaseConfig = {
-      apiKey: apiKey as string,
-      authDomain: authDomain as string,
-      projectId: projectId as string,
-      messagingSenderId: messagingSenderId as string,
-      appId: appId as string,
+        // Use environment variables for local development and Vercel deployments
+        const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+        const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+        const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+        const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+        const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+
+        // Prioritize Canvas environment variables if available, otherwise use process.env
+        const firebaseConfig = canvasFirebaseConfig || {
+          apiKey: apiKey,
+          authDomain: authDomain,
+          projectId: projectId,
+          messagingSenderId: messagingSenderId,
+          appId: appId,
+        };
+
+        // Determine the app ID to attach to the auth object
+        const currentAppId = canvasAppId || appId || 'default-app-id';
+
+        // Basic check for essential Firebase config
+        if (!firebaseConfig || !firebaseConfig.apiKey) {
+          throw new Error("Firebase configuration is incomplete or missing. Check your .env.local file and Vercel environment variables.");
+        }
+
+        let app;
+        // Initialize Firebase app only once to prevent multiple app instances
+        if (!getApps().length) {
+          app = initializeApp(firebaseConfig);
+        } else {
+          app = getApp(); // Get existing app instance if already initialized
+        }
+        setAppInstance(app);
+
+        const db = getFirestore(app);
+        setDbInstance(db);
+
+        const auth: CustomAuth = getAuth(app); // Cast to CustomAuth to add __app_id
+        auth.__app_id = currentAppId; // Attach __app_id to the auth object
+        setAuthInstance(auth);
+
+        // Authenticate user with custom token (from Canvas) or anonymously (for local/Vercel)
+        if (canvasInitialAuthToken) {
+          await signInWithCustomToken(auth, canvasInitialAuthToken);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        // Set up authentication state listener
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          setCurrentUser(user);
+          setLoading(false); // Auth state determined, stop loading
+        });
+
+        // Cleanup subscription on component unmount
+        return () => unsubscribe();
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during Firebase initialization.';
+        console.error("Firebase initialization error:", err);
+        setError(errorMessage);
+        setLoading(false); // Stop loading on error
+      }
     };
 
-    let app;
-    // Initialize Firebase app only once to prevent multiple app instances
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApp(); // Get existing app instance if already initialized
-    }
-    setFirebaseApp(app);
-
-    const db = getFirestore(app);
-    setDbInstance(db);
-
-    const auth = getAuth(app);
-    setAuthInstance(auth);
-
-    // Set up authentication state listener
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false); // Auth state determined, stop loading
-    });
-
-    // Cleanup subscription on component unmount
-    return () => unsubscribe();
-  }, [isFirebaseConfigComplete, apiKey, authDomain, projectId, messagingSenderId, appId]); // Dependencies for useEffect
+    initFirebase();
+  }, []); // Empty dependency array means this runs once on mount
 
   // Conditional rendering based on loading state
   if (loading) {
@@ -99,7 +131,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Provide the Firebase service instances and current user down the component tree.
   // This is the main return for the provider, rendering its children.
   return (
-    <FirebaseContext.Provider value={{ db: dbInstance, auth: authInstance, currentUser }}>
+    <FirebaseContext.Provider value={{ db: dbInstance, auth: authInstance, currentUser, loading, error }}>
       {children} {/* Renders all child components wrapped by this Provider */}
     </FirebaseContext.Provider>
   );

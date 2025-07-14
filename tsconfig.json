@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "es2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -14,16 +14,28 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"]
     },
-    "baseUrl": "." // Add this line
+    "types": [
+      "node",
+      "react",
+      "react-dom",
+      "uuid"
+      // Add below only if you're sure you need them AND they're installed
+      // "estree",
+      // "json-schema",
+      // "phoenix",
+      // "ws"
+    ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/types/**/*.d.ts"
+  ],
   "exclude": ["node_modules"]
 }

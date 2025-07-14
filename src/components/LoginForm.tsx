@@ -1,5 +1,5 @@
 // src/components/LoginForm.tsx
-"use client"; // This must be the very first line of code after comments
+"use client";
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -71,7 +71,8 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
+    // Added font-inter for consistent typography
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4 font-inter">
       <h1 className="text-4xl font-bold mb-8 text-blue-400">AI Gaming Assistant</h1>
       <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-semibold mb-6 text-center">
@@ -126,7 +127,7 @@ const LoginForm: React.FC = () => {
             <DialogHeader>
               <DialogTitle className="text-blue-400">Authentication Message</DialogTitle>
               <DialogDescription className="text-gray-300">
-                {/* Changed <p> to <div> to avoid nested <p> tags */}
+                {/* Changed <p> to <div> to avoid nested <p> tags, which is an HTML validation error */}
                 {error && <div className="text-red-500">{error}</div>}
                 {successMessage && <div className="text-green-500">{successMessage}</div>}
               </DialogDescription>
