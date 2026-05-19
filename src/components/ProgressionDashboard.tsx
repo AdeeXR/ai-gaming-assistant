@@ -28,6 +28,7 @@ const ProgressionDashboard: React.FC = () => {
   const { data: session } = useSession();
   const router = useRouter();
   const { db, auth } = useFirebase();
+  const authUserId = auth?.currentUser?.uid;
   const [activeObjectives, setActiveObjectives] = useState<Objective[]>([]);
   const [improvedObjectives, setImprovedObjectives] = useState<Objective[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,22 +38,22 @@ const ProgressionDashboard: React.FC = () => {
   useEffect(() => {
     console.log('ProgressionDashboard mounted:', {
       sessionId: session?.user?.id,
-      authUserId: auth?.currentUser?.uid,
+      authUserId,
       dbReady: !!db,
     });
-  }, []);
+  }, [session?.user?.id, authUserId, db]);
   useEffect(() => {
-    if (!session?.user?.id || !db || !auth?.currentUser) {
-      console.log('ProgressionDashboard: Missing session, db, or auth', { sessionId: session?.user?.id, dbExists: !!db, authUser: !!auth?.currentUser });
+    if (!session?.user?.id || !db || !authUserId) {
+      console.log('ProgressionDashboard: Missing session, db, or auth', { sessionId: session?.user?.id, dbExists: !!db, authUserId });
       router.push('/');
       return;
     }
 
-    console.log('ProgressionDashboard: Setting up listeners for userId:', auth.currentUser.uid);
+    console.log('ProgressionDashboard: Setting up listeners for userId:', authUserId);
 
     // Set up real-time listener for Active objectives
     const activeQuery = query(
-      collection(db, `users/${auth.currentUser.uid}/objectives`),
+      collection(db, `users/${authUserId}/objectives`),
       where('status', '==', 'Active') as QueryConstraint
     );
 
@@ -77,7 +78,7 @@ const ProgressionDashboard: React.FC = () => {
 
     // Set up real-time listener for Improved objectives
     const improvedQuery = query(
-      collection(db, `users/${auth.currentUser.uid}/objectives`),
+      collection(db, `users/${authUserId}/objectives`),
       where('status', '==', 'Improved') as QueryConstraint
     );
 
@@ -98,7 +99,7 @@ const ProgressionDashboard: React.FC = () => {
     );
 
     // Set up real-time listener for achievements
-    const achievementsQuery = query(collection(db, `users/${auth.currentUser.uid}/achievements`));
+    const achievementsQuery = query(collection(db, `users/${authUserId}/achievements`));
     const unsubscribeAchievements = onSnapshot(
       achievementsQuery,
       async (snapshot) => {
@@ -123,7 +124,7 @@ const ProgressionDashboard: React.FC = () => {
         ];
 
         const achievementPromises = defaultAchievements.map(achievement =>
-          addDoc(collection(db, `users/${auth.currentUser.uid}/achievements`), {
+          addDoc(collection(db, `users/${authUserId}/achievements`), {
             ...achievement,
             unlocked: false,
           })
@@ -141,17 +142,17 @@ const ProgressionDashboard: React.FC = () => {
       unsubscribeImproved();
       unsubscribeAchievements();
     };
-  }, [auth?.currentUser?.uid, db, router]);
+  }, [session?.user?.id, authUserId, db, router]);
 
-  if (!session?.user?.id || !auth?.currentUser?.uid) {
+  if (!session?.user?.id || !authUserId) {
     return null;
   }
 
   const markObjectiveCompleted = async (objectiveId: string) => {
-    if (!session?.user?.id || !db) return;
+    if (!session?.user?.id || !db || !authUserId) return;
 
     try {
-      const objectiveRef = doc(db, `users/${auth.currentUser.uid}/objectives/${objectiveId}`);
+      const objectiveRef = doc(db, `users/${authUserId}/objectives/${objectiveId}`);
       await updateDoc(objectiveRef, {
         status: 'Improved',
         completedAt: serverTimestamp(),
@@ -166,7 +167,7 @@ const ProgressionDashboard: React.FC = () => {
         // "Perfectionist" achievement - completed all objectives in a single analysis
         const perfectionistAchievement = achievements.find(a => a.name === 'Perfectionist');
         if (perfectionistAchievement && !perfectionistAchievement.unlocked) {
-          const achievementRef = doc(db, `users/${auth.currentUser.uid}/achievements/${perfectionistAchievement.id}`);
+          const achievementRef = doc(db, `users/${authUserId}/achievements/${perfectionistAchievement.id}`);
           await updateDoc(achievementRef, {
             unlocked: true,
             unlockedAt: serverTimestamp(),
@@ -178,7 +179,7 @@ const ProgressionDashboard: React.FC = () => {
       if (totalCompleted >= activeObjectives.length && activeObjectives.length > 0) {
         const firstStepsAchievement = achievements.find(a => a.name === 'First Steps');
         if (firstStepsAchievement && !firstStepsAchievement.unlocked) {
-          const achievementRef = doc(db, `users/${auth.currentUser.uid}/achievements/${firstStepsAchievement.id}`);
+          const achievementRef = doc(db, `users/${authUserId}/achievements/${firstStepsAchievement.id}`);
           await updateDoc(achievementRef, {
             unlocked: true,
             unlockedAt: serverTimestamp(),
@@ -190,7 +191,7 @@ const ProgressionDashboard: React.FC = () => {
       if (totalCompleted >= 10) {
         const skillMasterAchievement = achievements.find(a => a.name === 'Skill Master');
         if (skillMasterAchievement && !skillMasterAchievement.unlocked) {
-          const achievementRef = doc(db, `users/${auth.currentUser.uid}/achievements/${skillMasterAchievement.id}`);
+          const achievementRef = doc(db, `users/${authUserId}/achievements/${skillMasterAchievement.id}`);
           await updateDoc(achievementRef, {
             unlocked: true,
             unlockedAt: serverTimestamp(),

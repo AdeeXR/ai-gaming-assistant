@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
     videoData = { mimeType, data: base64 };
   }
 
-  const prompt = createGeminiPrompt(userId, text);
+  const prompt = createGeminiPrompt(userId, text ?? undefined);
 
   try {
     const analysisResult = await callGemini(prompt, videoData);

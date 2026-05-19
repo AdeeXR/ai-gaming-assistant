@@ -4,14 +4,27 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useFirebase } from '@/lib/firebase';
-import { collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, addDoc, serverTimestamp } from 'firebase/firestore';
+
+interface DebugObjective {
+  id: string;
+  text?: string;
+  status?: string;
+}
+
+interface DebugAchievement {
+  id: string;
+  name?: string;
+  description?: string;
+  unlocked?: boolean;
+}
 
 interface DebugInfo {
   sessionUserId: string | null;
   firebaseUserId: string | null;
   dbConnected: boolean;
-  objectivesData: any[];
-  achievementsData: any[];
+  objectivesData: DebugObjective[];
+  achievementsData: DebugAchievement[];
   errorMessage: string | null;
 }
 
