@@ -4,20 +4,20 @@
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useFirebase } from '@/lib/firebase';
-import { collection, doc, onSnapshot, query, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Import Timestamp, removed getDocs
+import { collection, doc, onSnapshot, query, addDoc, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore'; // Import Timestamp, removed getDocs
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea'; // Import Textarea
 import { Input } from '@/components/ui/input'; // Import Input
 import { Label } from '@/components/ui/label'; // Import Label
-import { v4 as uuidv4 } from 'uuid';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Trash2 } from 'lucide-react';
 
 // Define interfaces for AI analysis response and gameplay log
 interface AiAnalysisResult {
   analysis: string;
   suggestions: string[];
   errorsDetected: string[];
+  objectives: string[];
 }
 
 interface GameplayLog {
@@ -109,15 +109,43 @@ const PerformanceDashboard: React.FC = () => {
 
       const data: AiAnalysisResult = await response.json();
 
+      console.log('AI Analysis Response received:', data);
+      console.log('Objectives in response:', data.objectives);
+      console.log('Objectives length:', data.objectives?.length || 0);
+
       if (db && auth?.currentUser) {
         const userId = auth.currentUser.uid;
         const appId = auth.__app_id || 'default-app-id';
+        console.log('PerformanceDashboard: Writing gameplay log...');
         await addDoc(collection(db, `artifacts/${appId}/users/${userId}/gameplayLogs`), {
           userId: userId,
           gameplayText: gameplayTextInput,
           analysis: data,
           timestamp: serverTimestamp(),
         });
+        console.log('PerformanceDashboard: Gameplay log created successfully');
+
+        // Create objectives from the analysis
+        if (data.objectives && data.objectives.length > 0) {
+          console.log('Creating objectives for userId:', userId);
+          console.log('Number of objectives:', data.objectives.length);
+          console.log('Objectives to create:', data.objectives);
+          const objectivesCollection = collection(db, `users/${userId}/objectives`);
+          const objectivePromises = data.objectives.map((objectiveText: string, index: number) => {
+            console.log(`Creating objective ${index + 1}:`, objectiveText);
+            return addDoc(objectivesCollection, {
+              text: objectiveText,
+              status: 'Active',
+              createdAt: serverTimestamp(),
+            });
+          });
+          await Promise.all(objectivePromises);
+          console.log('All objectives created successfully');
+        } else {
+          console.warn('No objectives in AI response:', data);
+        }
+      } else {
+        console.error('Missing db or auth.currentUser', { db: !!db, auth: !!auth, currentUser: !!auth?.currentUser });
       }
 
       setModalContent({
@@ -184,22 +212,35 @@ const PerformanceDashboard: React.FC = () => {
     setIsModalOpen(true);
 
     try {
-      const storage = getStorage(db.app);
-      const userId = auth.currentUser.uid;
-      const appId = auth.__app_id || 'default-app-id';
-      const fileExtension = uploadFile.name.split('.').pop();
-      const uniqueFileName = `${uuidv4()}.${fileExtension}`;
-      const storageRef = ref(storage, `artifacts/${appId}/users/${userId}/gameplay-files/${uniqueFileName}`);
+      const uploadForm = new FormData();
+      uploadForm.append('gameplayFile', uploadFile);
 
-      await uploadBytes(storageRef, uploadFile);
-      const fileUrl = await getDownloadURL(storageRef);
-
-      await addDoc(collection(db, `artifacts/${appId}/users/${userId}/gameplayLogs`), {
-        userId: userId,
-        fileName: uploadFile.name,
-        fileUrl: fileUrl,
-        timestamp: serverTimestamp(),
+      const uploadResponse = await fetch('/api/upload-gameplay', {
+        method: 'POST',
+        body: uploadForm,
       });
+
+      if (!uploadResponse.ok) {
+        const uploadErrorData = await uploadResponse.json().catch(() => ({ error: 'Unknown upload error' }));
+        throw new Error(uploadErrorData.error || 'Upload failed');
+      }
+
+      const uploadResult = await uploadResponse.json();
+      const fileUrl = uploadResult.fileUrl;
+      if (!fileUrl) {
+        throw new Error('Upload succeeded but no file URL was returned.');
+      }
+
+      if (db && auth.currentUser) {
+        const userId = auth.currentUser.uid;
+        const appId = auth.__app_id || 'default-app-id';
+        await addDoc(collection(db, `artifacts/${appId}/users/${userId}/gameplayLogs`), {
+          userId: userId,
+          fileName: uploadFile.name,
+          fileUrl: fileUrl,
+          timestamp: serverTimestamp(),
+        });
+      }
 
       setModalContent({ title: 'File Upload Success', description: `File "${uploadFile.name}" uploaded successfully!` });
       setUploadFile(null);
@@ -209,6 +250,68 @@ const PerformanceDashboard: React.FC = () => {
       setModalContent({ title: 'Upload Error', description: `Failed to upload file: ${errorMessage}` });
     } finally {
       setLoadingUpload(false);
+    }
+  };
+
+  const handleDeleteAnalysis = async (logId: string) => {
+    if (!auth?.currentUser || !db) {
+      setModalContent({ title: 'Error', description: 'Authentication required.' });
+      setIsModalOpen(true);
+      return;
+    }
+
+    try {
+      const userId = auth.currentUser.uid;
+      const appId = auth.__app_id || 'default-app-id';
+      const logRef = doc(db, `artifacts/${appId}/users/${userId}/gameplayLogs/${logId}`);
+      await deleteDoc(logRef);
+      setModalContent({ title: 'Success', description: 'Analysis entry deleted successfully.' });
+      setIsModalOpen(true);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      console.error('Error deleting analysis:', error);
+      setModalContent({ title: 'Error', description: `Failed to delete entry: ${errorMessage}` });
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleClearAllHistory = async () => {
+    if (!auth?.currentUser || !db) {
+      setModalContent({ title: 'Error', description: 'Authentication required.' });
+      setIsModalOpen(true);
+      return;
+    }
+
+    if (gameplayLogs.length === 0) {
+      setModalContent({ title: 'Info', description: 'No history to clear.' });
+      setIsModalOpen(true);
+      return;
+    }
+
+    const confirmClear = window.confirm(
+      `Are you sure you want to delete all ${gameplayLogs.length} analysis entries? This action cannot be undone.`
+    );
+
+    if (!confirmClear) return;
+
+    try {
+      const userId = auth.currentUser.uid;
+      const appId = auth.__app_id || 'default-app-id';
+      
+      // Delete all logs
+      const deletePromises = gameplayLogs.map((log) => {
+        const logRef = doc(db, `artifacts/${appId}/users/${userId}/gameplayLogs/${log.id}`);
+        return deleteDoc(logRef);
+      });
+
+      await Promise.all(deletePromises);
+      setModalContent({ title: 'Success', description: 'All analysis history has been cleared.' });
+      setIsModalOpen(true);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      console.error('Error clearing history:', error);
+      setModalContent({ title: 'Error', description: `Failed to clear history: ${errorMessage}` });
+      setIsModalOpen(true);
     }
   };
 
@@ -283,17 +386,37 @@ const PerformanceDashboard: React.FC = () => {
       </section>
 
       <section className="p-6 bg-gray-800 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-semibold mb-4 text-teal-400">Your Gameplay History</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold text-teal-400">Analysis History</h2>
+          {gameplayLogs.length > 0 && (
+            <Button
+              onClick={handleClearAllHistory}
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200"
+            >
+              Clear All History
+            </Button>
+          )}
+        </div>
         {gameplayLogs.length === 0 ? (
-          <p className="text-gray-400">No gameplay logs uploaded yet.</p>
+          <p className="text-gray-400">No analysis history yet. Start by analyzing gameplay or uploading files.</p>
         ) : (
-          <ul className="space-y-3">
-            {gameplayLogs.map((log) => (
-              <li key={log.id} className="bg-gray-700 p-4 rounded-md border border-gray-600">
-                <div>
-                  <p className="text-sm text-gray-400 mb-2">
-                    {log.timestamp ? new Date(log.timestamp.toDate()).toLocaleString() : 'No date'}
-                  </p>
+          <div className="space-y-4">
+            <p className="text-gray-400 text-sm">Total entries: {gameplayLogs.length}</p>
+            <ul className="space-y-3">
+              {gameplayLogs.map((log) => (
+                <li key={log.id} className="bg-gray-700 p-4 rounded-md border border-gray-600 relative">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm text-gray-400">
+                      {log.timestamp ? new Date(log.timestamp.toDate()).toLocaleString() : 'No date'}
+                    </p>
+                    <button
+                      onClick={() => handleDeleteAnalysis(log.id)}
+                      className="text-red-400 hover:text-red-300 transition duration-150"
+                      title="Delete this entry"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                   {log.gameplayText && (
                     <p className="text-gray-200 mb-2">
                       <span className="font-semibold text-teal-300">Input:</span> {log.gameplayText}
@@ -334,10 +457,10 @@ const PerformanceDashboard: React.FC = () => {
                       </a>
                     </p>
                   )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </section>
 

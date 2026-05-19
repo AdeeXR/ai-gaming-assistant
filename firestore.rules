@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow any authenticated user to access data under /users/{userId}
+    // Since Firebase uses anonymous auth client-side, we allow any authenticated user
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Allow any authenticated user to access data under /artifacts/{appId}/users/{userId}
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

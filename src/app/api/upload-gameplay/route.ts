@@ -4,34 +4,75 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-// Import authOptions from the dedicated configuration file
-import { authOptions } from '@/lib/auth'; // Correct import path for authOptions
+import { authOptions } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import admin from 'firebase-admin';
 
-// Initialize Firebase client-side app (needed for Firestore client operations within the API route)
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY as string,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN as string,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID as string,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID as string,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID as string,
-};
-
-let firebaseClientApp;
-if (!getApps().length) {
-  firebaseClientApp = initializeApp(firebaseConfig);
-} else {
-  firebaseClientApp = getApp();
+function parseServiceAccountKey(rawKey: string) {
+  try {
+    // First try to decode as base64
+    const decoded = Buffer.from(rawKey, 'base64').toString('utf8');
+    return JSON.parse(decoded);
+  } catch (base64Error) {
+    try {
+      // If base64 fails, try direct JSON parse
+      return JSON.parse(rawKey);
+    } catch (firstError) {
+      try {
+        // Try with newline replacement
+        return JSON.parse(rawKey.replaceAll('\\n', '\n'));
+      } catch (secondError) {
+        console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. base64 error:', base64Error, 'direct error:', firstError, 'newline error:', secondError);
+        throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON or base64-encoded JSON.');
+      }
+    }
+  }
 }
-const firestoreDb = getFirestore(firebaseClientApp);
 
-// Initialize Supabase client for Storage
+function initializeFirebaseAdmin() {
+  if (admin.apps.length) {
+    return admin.app();
+  }
+
+  const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!rawKey) {
+    const message = 'Missing FIREBASE_SERVICE_ACCOUNT_KEY environment variable.';
+    console.error(message);
+    throw new Error(message);
+  }
+
+  const serviceAccount = parseServiceAccountKey(rawKey);
+  return admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: serviceAccount.project_id,
+  });
+}
+
+const firebaseAdminApp = initializeFirebaseAdmin();
+const firestoreDb = firebaseAdminApp.firestore();
+
+// Initialize Supabase client for Storage (using service role for server-side uploads)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
 const SUPABASE_BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME as string;
+
+if (!supabaseUrl || !supabaseServiceRoleKey || !SUPABASE_BUCKET_NAME) {
+  const missingVars = [
+    !supabaseUrl && 'NEXT_PUBLIC_SUPABASE_URL',
+    !supabaseServiceRoleKey && 'SUPABASE_SERVICE_ROLE_KEY',
+    !SUPABASE_BUCKET_NAME && 'SUPABASE_BUCKET_NAME',
+  ].filter(Boolean);
+  const message = `Missing Supabase env var(s): ${missingVars.join(', ')}`;
+  console.error(message);
+  throw new Error(message);
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});
 
 export async function POST(req: NextRequest) {
   // Use getServerSession with the imported authOptions to get the current user session
@@ -84,16 +125,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to get public URL for uploaded file.' }, { status: 500 });
     }
 
-    // Save file metadata to Firestore
+    // Save file metadata to Firestore through the Firebase Admin SDK
     const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || 'default-app-id';
-    const gameplayLogsCollectionRef = collection(firestoreDb, `artifacts/${appId}/users/${userId}/gameplay_logs`);
+    const gameplayLogsCollectionRef = firestoreDb.collection(`artifacts/${appId}/users/${userId}/gameplayLogs`);
 
-    await addDoc(gameplayLogsCollectionRef, {
+    await gameplayLogsCollectionRef.add({
       userId: userId,
       fileName: file.name,
       fileMimeType: file.type,
       fileUrl: fileUrl,
-      timestamp: serverTimestamp(), // Use Firestore server timestamp
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     // Return success response

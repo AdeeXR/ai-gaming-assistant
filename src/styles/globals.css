@@ -5,23 +5,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
-  These CSS variables define your theme colors.
-  They are configured to switch based on user's dark mode preference.
-*/
+/* Gaming Theme - Obsidian + Cyber Cyan + Neon Purple */
 :root {
-  /* Fallback or light mode default */
+  /* Dark base colors */
+  --obsidian: #09090b;
+  --obsidian-light: #0f0f12;
+  
+  /* Accent colors */
+  --cyan-accent: #06b6d4;
+  --cyan-glow: #06b6d4;
+  --purple-accent: #d946ef;
+  --purple-glow: #d946ef;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root { /* Our desired gray-900 for dark mode background */ /* Our desired gray-50 for dark mode text */
-  }
-}
-
-/* Apply general body styles, using your CSS variables and our desired Inter font */
-body { /* Uses the background variable (dark in dark mode) */      /* Uses the foreground variable (light in dark mode) */
-  font-family: 'Inter', sans-serif; /* Apply the Inter font */
-  min-height: 100vh; /* Ensure body takes full viewport height */
+/* Apply general body styles */
+body {
+  background-color: #09090b;
+  color: #ffffff;
+  font-family: 'Geist Sans', sans-serif;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
 }
@@ -33,6 +35,60 @@ body { /* Uses the background variable (dark in dark mode) */      /* Uses the f
   flex-direction: column;
 }
 
+/* Custom utilities for gaming aesthetic */
+@layer components {
+  /* Glassmorphism base */
+  .glass {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl;
+  }
+
+  .glass-hover {
+    @apply glass hover:border-white/20 transition-all duration-300;
+  }
+
+  /* Glows */
+  .glow-cyan {
+    @apply bg-cyan-500/20 blur-[100px];
+  }
+
+  .glow-purple {
+    @apply bg-fuchsia-500/20 blur-[100px];
+  }
+
+  /* Text styles */
+  .heading-gaming {
+    @apply font-black uppercase tracking-tighter;
+  }
+
+  .subheading-gaming {
+    @apply font-bold uppercase tracking-wider text-sm;
+  }
+
+  /* Input styles */
+  .input-gaming {
+    @apply bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-200;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black font-bold uppercase tracking-wider rounded-lg transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-fuchsia-500/20 border border-fuchsia-500/50 text-fuchsia-400 font-semibold rounded-lg hover:bg-fuchsia-500/30 transition-all;
+  }
+
+  /* Card styles */
+  .card-gaming {
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-8;
+  }
+
+  .card-gaming-hover {
+    @apply card-gaming hover:border-white/20 transition-all duration-300;
+  }
+}
+
+/* Tailwind base layer overrides */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -54,13 +110,9 @@ body { /* Uses the background variable (dark in dark mode) */      /* Uses the f
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -81,19 +133,30 @@ body { /* Uses the background variable (dark in dark mode) */      /* Uses the f
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Animations */
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@layer utilities {
+  .animate-glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+}
+

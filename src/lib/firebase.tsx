@@ -7,7 +7,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User as FirebaseAuthUser, Auth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore'; // No Timestamp needed here, so no import
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
 
 // Extend the Auth type to include __app_id, which is provided by the Canvas environment
 interface CustomAuth extends Auth {
@@ -120,6 +120,16 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     initFirebase();
   }, []); // Empty dependency array means this runs once on mount
 
+  // Provide the Firebase service instances and current user down the component tree.
+  // This is the main return for the provider, rendering its children.
+  const contextValue = useMemo(() => ({
+    db: dbInstance,
+    auth: authInstance,
+    currentUser,
+    loading,
+    error,
+  }), [dbInstance, authInstance, currentUser, loading, error]);
+
   // Conditional rendering based on loading state
   if (loading) {
     // Render a simple loading message or a spinner while Firebase is initializing and auth state is being checked
@@ -130,10 +140,8 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     );
   }
 
-  // Provide the Firebase service instances and current user down the component tree.
-  // This is the main return for the provider, rendering its children.
   return (
-    <FirebaseContext.Provider value={{ db: dbInstance, auth: authInstance, currentUser, loading, error }}>
+    <FirebaseContext.Provider value={contextValue}>
       {children} {/* Renders all child components wrapped by this Provider */}
     </FirebaseContext.Provider>
   );
