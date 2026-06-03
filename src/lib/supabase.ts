@@ -2,12 +2,13 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseBucketName = process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME;
+const supabaseBucketNameEnv = process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME;
 
-if (!supabaseUrl || !supabaseAnonKey || !supabaseBucketName) {
+if (!supabaseUrl || !supabaseAnonKey || !supabaseBucketNameEnv) {
   throw new Error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_BUCKET_NAME');
 }
 
+const supabaseBucketName = supabaseBucketNameEnv;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function sanitizeFileName(fileName: string) {
@@ -29,17 +30,19 @@ export async function uploadVideoFileToSupabase(userId: string, file: File) {
     throw new Error(uploadError.message || 'Supabase file upload failed.');
   }
 
-  const { data: publicUrlData, error: publicUrlError } = supabase.storage
+  const publicUrlResponse = supabase.storage
     .from(supabaseBucketName)
     .getPublicUrl(filePath);
 
-  if (publicUrlError || !publicUrlData?.publicUrl) {
-    throw new Error(publicUrlError?.message || 'Failed to generate Supabase public URL.');
+  if (!publicUrlResponse.data?.publicUrl) {
+    throw new Error('Failed to generate Supabase public URL.');
   }
+
+  const publicUrl = publicUrlResponse.data.publicUrl;
 
   return {
     filePath,
-    publicUrl: publicUrlData.publicUrl,
+    publicUrl,
   };
 }
 
