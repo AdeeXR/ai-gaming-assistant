@@ -9,6 +9,7 @@ import { useFirebase } from '@/lib/firebase';
 import { gameMetadata, gameTitles } from '@/lib/gameMetadata';
 import { collection, onSnapshot, query, doc, deleteDoc, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { uploadVideoFileToSupabase } from '@/lib/supabase';
 
 interface AnalysisResult {
   analysis: string;
@@ -165,25 +166,16 @@ const Dashboard: React.FC = () => {
       let gameplayVideoUrl: string | undefined;
 
       if (videoFile) {
-        setTelemetryPhase('Uploading gameplay video...');
-        const uploadForm = new FormData();
-        uploadForm.append('gameplayFile', videoFile);
-
-        const uploadResponse = await fetch('/api/upload-gameplay', {
-          method: 'POST',
-          body: uploadForm,
-        });
-
-        if (!uploadResponse.ok) {
-          const uploadErrorData = await uploadResponse.json().catch(() => ({ error: 'Unknown upload error' }));
-          throw new Error(uploadErrorData.error || 'Upload failed');
+        if (!auth?.currentUser) {
+          throw new Error('Authentication required to upload video.');
         }
 
-        const uploadResult = await uploadResponse.json();
-        gameplayVideoUrl = uploadResult.fileUrl;
+        setTelemetryPhase('Uploading gameplay video...');
+        const uploadResult = await uploadVideoFileToSupabase(auth.currentUser.uid, videoFile);
+        gameplayVideoUrl = uploadResult.publicUrl;
 
         if (!gameplayVideoUrl) {
-          throw new Error('Video upload succeeded but no URL returned.');
+          throw new Error('Video upload succeeded but no URL was returned.');
         }
       }
 

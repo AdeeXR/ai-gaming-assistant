@@ -6,6 +6,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useFirebase } from '@/lib/firebase';
 import { collection, doc, onSnapshot, query, addDoc, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore'; // Import Timestamp, removed getDocs
 import { Button } from '@/components/ui/button';
+import { uploadVideoFileToSupabase } from '@/lib/supabase';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea'; // Import Textarea
 import { Input } from '@/components/ui/input'; // Import Input
@@ -212,21 +213,12 @@ const PerformanceDashboard: React.FC = () => {
     setIsModalOpen(true);
 
     try {
-      const uploadForm = new FormData();
-      uploadForm.append('gameplayFile', uploadFile);
-
-      const uploadResponse = await fetch('/api/upload-gameplay', {
-        method: 'POST',
-        body: uploadForm,
-      });
-
-      if (!uploadResponse.ok) {
-        const uploadErrorData = await uploadResponse.json().catch(() => ({ error: 'Unknown upload error' }));
-        throw new Error(uploadErrorData.error || 'Upload failed');
+      if (!auth?.currentUser) {
+        throw new Error('Authentication required to upload files.');
       }
 
-      const uploadResult = await uploadResponse.json();
-      const fileUrl = uploadResult.fileUrl;
+      const { publicUrl: fileUrl } = await uploadVideoFileToSupabase(auth.currentUser.uid, uploadFile);
+
       if (!fileUrl) {
         throw new Error('Upload succeeded but no file URL was returned.');
       }
