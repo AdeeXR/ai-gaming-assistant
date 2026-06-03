@@ -2,6 +2,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
+import admin from 'firebase-admin';
 
 const firebaseAdminApp = getFirebaseAdminApp();
 const firestore = firebaseAdminApp.firestore();
