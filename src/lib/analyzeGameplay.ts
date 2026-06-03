@@ -4,9 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { gameMetadata } from '@/lib/gameMetadata';
 
 async function callGemini(parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }>) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    throw new Error('Server configuration error: Gemini API key is missing.');
+    throw new Error('Server configuration error: GOOGLE_API_KEY environment variable is missing. Get your key from https://aistudio.google.com/apikey');
   }
 
   const payload = {

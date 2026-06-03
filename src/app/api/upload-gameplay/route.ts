@@ -7,48 +7,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
 import admin from 'firebase-admin';
+import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
 
-function parseServiceAccountKey(rawKey: string) {
-  try {
-    // First try to decode as base64
-    const decoded = Buffer.from(rawKey, 'base64').toString('utf8');
-    return JSON.parse(decoded);
-  } catch (base64Error) {
-    try {
-      // If base64 fails, try direct JSON parse
-      return JSON.parse(rawKey);
-    } catch (firstError) {
-      try {
-        // Try with newline replacement
-        return JSON.parse(rawKey.replaceAll('\\n', '\n'));
-      } catch (secondError) {
-        console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. base64 error:', base64Error, 'direct error:', firstError, 'newline error:', secondError);
-        throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON or base64-encoded JSON.');
-      }
-    }
-  }
-}
-
-function initializeFirebaseAdmin() {
-  if (admin.apps.length) {
-    return admin.app();
-  }
-
-  const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!rawKey) {
-    const message = 'Missing FIREBASE_SERVICE_ACCOUNT_KEY environment variable.';
-    console.error(message);
-    throw new Error(message);
-  }
-
-  const serviceAccount = parseServiceAccountKey(rawKey);
-  return admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: serviceAccount.project_id,
-  });
-}
-
-const firebaseAdminApp = initializeFirebaseAdmin();
+const firebaseAdminApp = getFirebaseAdminApp();
 const firestoreDb = firebaseAdminApp.firestore();
 
 // Initialize Supabase client for Storage (using service role for server-side uploads)

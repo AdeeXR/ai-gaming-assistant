@@ -10,18 +10,16 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import admin from 'firebase-admin';
+import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
 import { UserProfile } from '@/types/user';
 
 // Initialize Firebase Admin SDK (for server-side operations, e.g., custom token generation, user management)
 // This uses the FIREBASE_SERVICE_ACCOUNT_KEY from environment variables.
 if (!admin.apps.length) {
   try {
-    const serviceAccountJson = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccountJson),
-    });
+    getFirebaseAdminApp();
   } catch (error) {
-    console.error("Firebase Admin SDK initialization error in auth.ts:", error);
+    console.error('Firebase Admin SDK initialization error in auth.ts:', error);
   }
 }
 

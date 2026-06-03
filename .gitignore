@@ -33,4 +33,5 @@ build/
 out/
 
 # Vercel deployment files
-.vercel/
+.vercel/rewrite_env.py
+rewrite_env.py

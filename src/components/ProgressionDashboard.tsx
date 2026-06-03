@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, QueryConstraint, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, QueryConstraint, doc, updateDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { useFirebase } from '@/lib/firebase';
 import { Target, Trophy, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
 
@@ -34,6 +34,20 @@ const ProgressionDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+
+  const defaultAchievements = [
+    { id: 'first_steps', name: 'First Steps', description: 'Complete your first set of gaming objectives.', icon: '🎯' },
+    { id: 'sharpshooter', name: 'Sharpshooter', description: 'Complete 2 objectives to sharpen your focus.', icon: '🎯' },
+    { id: 'momentum_rider', name: 'Momentum Rider', description: 'Complete 3 objectives to build momentum.', icon: '🚀' },
+    { id: 'objective_collector', name: 'Objective Collector', description: 'Complete 5 objectives and collect your progress.', icon: '📦' },
+    { id: 'skill_master', name: 'Skill Master', description: 'Complete 10 objectives successfully.', icon: '⚡' },
+    { id: 'perfectionist', name: 'Perfectionist', description: 'Complete every active objective in a single run.', icon: '💎' },
+    { id: 'consistent_player', name: 'Consistent Player', description: 'Complete 7 objectives to prove consistent improvement.', icon: '🔥' },
+    { id: 'focused_challenger', name: 'Focused Challenger', description: 'Finish 4 objectives with steady progress.', icon: '🧠' },
+    { id: 'quick_learner', name: 'Quick Learner', description: 'Unlock 3 achievements in a short period.', icon: '⚡' },
+    { id: 'game_changer', name: 'Game Changer', description: 'Unlock every achievement in the vault.', icon: '👑' },
+  ];
+
   // Debug logging
   useEffect(() => {
     console.log('ProgressionDashboard mounted:', {
@@ -103,35 +117,61 @@ const ProgressionDashboard: React.FC = () => {
     const unsubscribeAchievements = onSnapshot(
       achievementsQuery,
       async (snapshot) => {
-        const achievementsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data().name || '',
-        description: doc.data().description || '',
-        unlocked: doc.data().unlocked || false,
-        icon: doc.data().icon || '🏆',
-        unlockedAt: doc.data().unlockedAt?.toDate?.(),
-      }));
-      setAchievements(achievementsData);
+        const rawAchievements = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          name: doc.data().name || '',
+          description: doc.data().description || '',
+          unlocked: doc.data().unlocked || false,
+          icon: doc.data().icon || '🏆',
+          unlockedAt: doc.data().unlockedAt?.toDate?.(),
+          ref: doc.ref,
+        }));
 
-      // Create default achievements if none exist
-      if (snapshot.empty) {
-        const defaultAchievements = [
-          { name: 'First Steps', description: 'Completed your first set of gaming objectives!', icon: '🎯' },
-          { name: 'Skill Master', description: 'Completed 10 objectives successfully!', icon: '⚡' },
-          { name: 'Perfectionist', description: 'Completed all objectives in a single analysis!', icon: '💎' },
-          { name: 'Consistent Player', description: 'Completed objectives for 7 days in a row!', icon: '🔥' },
-          { name: 'Game Changer', description: 'Unlocked all achievements!', icon: '👑' },
-        ];
+        const uniqueAchievementsMap = new Map<string, { achievement: Achievement; ref: any }>();
+        const duplicateRefs: any[] = [];
 
-        const achievementPromises = defaultAchievements.map(achievement =>
-          addDoc(collection(db, `users/${authUserId}/achievements`), {
-            ...achievement,
-            unlocked: false,
-          })
-        );
-        await Promise.all(achievementPromises);
-      }
-    },
+        rawAchievements.forEach((entry) => {
+          const existing = uniqueAchievementsMap.get(entry.name);
+          if (!existing) {
+            uniqueAchievementsMap.set(entry.name, { achievement: entry, ref: entry.ref });
+            return;
+          }
+
+          const mergedAchievement: Achievement = {
+            id: existing.achievement.id,
+            name: existing.achievement.name,
+            description: existing.achievement.description || entry.description,
+            icon: existing.achievement.icon || entry.icon,
+            unlocked: existing.achievement.unlocked || entry.unlocked,
+            unlockedAt: existing.achievement.unlockedAt || entry.unlockedAt,
+          };
+
+          uniqueAchievementsMap.set(entry.name, { achievement: mergedAchievement, ref: existing.ref });
+          duplicateRefs.push(entry.ref);
+        });
+
+        const uniqueAchievements = Array.from(uniqueAchievementsMap.values()).map((item) => item.achievement);
+        setAchievements(uniqueAchievements);
+
+        if (duplicateRefs.length > 0) {
+          console.log('Cleaning duplicate achievement docs:', duplicateRefs.length);
+          await Promise.all(duplicateRefs.map((ref) => deleteDoc(ref)));
+        }
+
+        const existingNames = new Set(uniqueAchievements.map((achievement) => achievement.name));
+        const missingAchievements = defaultAchievements.filter((achievement) => !existingNames.has(achievement.name));
+
+        if (missingAchievements.length > 0) {
+          const achievementPromises = missingAchievements.map((achievement) => {
+            const achievementDocRef = doc(db, `users/${authUserId}/achievements/${achievement.id}`);
+            return setDoc(achievementDocRef, {
+              ...achievement,
+              unlocked: false,
+            }, { merge: true });
+          });
+          await Promise.all(achievementPromises);
+        }
+      },
       (error) => {
         console.error('Error listening to achievements:', error);
       }
@@ -148,6 +188,18 @@ const ProgressionDashboard: React.FC = () => {
     return null;
   }
 
+  const unlockAchievementByName = async (name: string, condition: boolean) => {
+    if (!condition) return;
+    const achievement = achievements.find((a) => a.name === name);
+    if (!achievement || achievement.unlocked) return;
+
+    const achievementRef = doc(db, `users/${authUserId}/achievements/${achievement.id}`);
+    await updateDoc(achievementRef, {
+      unlocked: true,
+      unlockedAt: serverTimestamp(),
+    });
+  };
+
   const markObjectiveCompleted = async (objectiveId: string) => {
     if (!session?.user?.id || !db || !authUserId) return;
 
@@ -158,47 +210,21 @@ const ProgressionDashboard: React.FC = () => {
         completedAt: serverTimestamp(),
       });
 
-      // Check for achievements
-      const updatedActiveObjectives = activeObjectives.filter(obj => obj.id !== objectiveId);
-      const totalCompleted = improvedObjectives.length + 1; // +1 for the one just completed
+      const updatedActiveObjectives = activeObjectives.filter((obj) => obj.id !== objectiveId);
+      const totalCompleted = improvedObjectives.length + 1;
 
-      // Check if all active objectives are now completed
-      if (updatedActiveObjectives.length === 0 && activeObjectives.length > 0) {
-        // "Perfectionist" achievement - completed all objectives in a single analysis
-        const perfectionistAchievement = achievements.find(a => a.name === 'Perfectionist');
-        if (perfectionistAchievement && !perfectionistAchievement.unlocked) {
-          const achievementRef = doc(db, `users/${authUserId}/achievements/${perfectionistAchievement.id}`);
-          await updateDoc(achievementRef, {
-            unlocked: true,
-            unlockedAt: serverTimestamp(),
-          });
-        }
-      }
+      await unlockAchievementByName('First Steps', totalCompleted >= 1 && activeObjectives.length > 0);
+      await unlockAchievementByName('Sharpshooter', totalCompleted >= 2);
+      await unlockAchievementByName('Momentum Rider', totalCompleted >= 3);
+      await unlockAchievementByName('Focused Challenger', totalCompleted >= 4);
+      await unlockAchievementByName('Objective Collector', totalCompleted >= 5);
+      await unlockAchievementByName('Consistent Player', totalCompleted >= 7);
+      await unlockAchievementByName('Skill Master', totalCompleted >= 10);
+      await unlockAchievementByName('Perfectionist', updatedActiveObjectives.length === 0 && activeObjectives.length > 0);
 
-      // "First Steps" achievement - completed first set of objectives
-      if (totalCompleted >= activeObjectives.length && activeObjectives.length > 0) {
-        const firstStepsAchievement = achievements.find(a => a.name === 'First Steps');
-        if (firstStepsAchievement && !firstStepsAchievement.unlocked) {
-          const achievementRef = doc(db, `users/${authUserId}/achievements/${firstStepsAchievement.id}`);
-          await updateDoc(achievementRef, {
-            unlocked: true,
-            unlockedAt: serverTimestamp(),
-          });
-        }
-      }
-
-      // "Skill Master" achievement - completed 10 objectives
-      if (totalCompleted >= 10) {
-        const skillMasterAchievement = achievements.find(a => a.name === 'Skill Master');
-        if (skillMasterAchievement && !skillMasterAchievement.unlocked) {
-          const achievementRef = doc(db, `users/${authUserId}/achievements/${skillMasterAchievement.id}`);
-          await updateDoc(achievementRef, {
-            unlocked: true,
-            unlockedAt: serverTimestamp(),
-          });
-        }
-      }
-
+      const unlockedCount = achievements.filter((a) => a.unlocked).length + 1;
+      await unlockAchievementByName('Quick Learner', unlockedCount >= 3);
+      await unlockAchievementByName('Game Changer', unlockedCount >= achievements.length && achievements.length >= defaultAchievements.length);
     } catch (error) {
       console.error('Error marking objective as completed:', error);
     }
@@ -306,23 +332,27 @@ const ProgressionDashboard: React.FC = () => {
                   <h2 className="text-2xl font-bold uppercase tracking-tighter">Achievement Vault</h2>
                 </div>
 
-                {achievements.filter(a => a.unlocked).length === 0 ? (
+                {achievements.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Trophy className="w-12 h-12 text-cyan-500/30 mb-3" />
-                    <p className="text-white/50 text-sm">Complete objectives to unlock achievements!</p>
-                    <p className="text-white/30 text-xs mt-1">Master skills and earn rewards.</p>
+                    <p className="text-white/50 text-sm">Loading achievement vault...</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {achievements.filter(a => a.unlocked).map((achievement) => (
+                    {achievements.map((achievement) => (
                       <div
                         key={achievement.id}
-                        className="bg-gradient-to-r from-cyan-500/20 to-cyan-500/10 border border-cyan-500/40 rounded-lg p-4 hover:border-cyan-400/60 hover:from-cyan-500/30 hover:to-cyan-500/20 transition-all duration-200 transform hover:scale-105"
+                        className={`rounded-lg p-4 border transition-all duration-200 transform ${achievement.unlocked ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-500/10 border-cyan-500/40 hover:border-cyan-400/60 hover:from-cyan-500/30 hover:to-cyan-500/20 hover:scale-105' : 'bg-gray-900/80 border-white/10 opacity-70 hover:opacity-100'}`}
                       >
                         <div className="flex items-start gap-3">
                           <div className="text-2xl">{achievement.icon}</div>
                           <div className="flex-grow">
-                            <p className="text-cyan-200 font-semibold text-sm leading-relaxed">{achievement.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-cyan-200 font-semibold text-sm leading-relaxed">{achievement.name}</p>
+                              {!achievement.unlocked && (
+                                <span className="text-xs uppercase tracking-[0.2em] text-white/40">Locked</span>
+                              )}
+                            </div>
                             <p className="text-cyan-300/70 text-xs mt-1">{achievement.description}</p>
                             {achievement.unlockedAt && (
                               <p className="text-cyan-400/50 text-xs mt-1">

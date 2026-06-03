@@ -48,6 +48,7 @@ const Dashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [telemetryPhase, setTelemetryPhase] = useState<string>('');
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistory[]>([]);
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<string[]>([]);
   const selectedGameMetadata = gameTitle ? gameMetadata[gameTitle] : undefined;
   const [showObjectivesModal, setShowObjectivesModal] = useState(false);
 
@@ -74,6 +75,12 @@ const Dashboard: React.FC = () => {
     router.push('/');
     return null;
   }
+
+  const toggleHistoryExpansion = (logId: string) => {
+    setExpandedHistoryIds((prev) =>
+      prev.includes(logId) ? prev.filter((id) => id !== logId) : [...prev, logId]
+    );
+  };
 
   const handleDeleteAnalysis = async (logId: string) => {
     if (!auth?.currentUser || !db) {
@@ -325,9 +332,9 @@ const Dashboard: React.FC = () => {
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-200 text-sm"
                     disabled={loading}
                   >
-                    <option value="">Select a game</option>
+                    <option className="text-black" value="">Select a game</option>
                     {gameTitles.map((title) => (
-                      <option key={title} value={title}>{title}</option>
+                      <option key={title} className="text-black" value={title}>{title}</option>
                     ))}
                   </select>
                 </div>
@@ -343,9 +350,9 @@ const Dashboard: React.FC = () => {
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-200 text-sm"
                       disabled={loading}
                     >
-                      <option value="">Select role</option>
+                      <option className="text-black" value="">Select role</option>
                       {Object.keys(selectedGameMetadata.roleGuidance).map((role) => (
-                        <option key={role} value={role}>{role}</option>
+                        <option key={role} className="text-black" value={role}>{role}</option>
                       ))}
                     </select>
                   </div>
@@ -568,28 +575,39 @@ const Dashboard: React.FC = () => {
                       key={entry.id}
                       className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-white/20 transition-all duration-200"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <p className="text-white/50 text-xs font-mono">
-                          {entry.timestamp ? new Date(entry.timestamp.toDate()).toLocaleString() : 'No date'}
-                        </p>
-                        <button
-                          onClick={() => handleDeleteAnalysis(entry.id)}
-                          className="text-red-400 hover:text-red-300 transition duration-150"
-                          title="Delete this entry"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <div className="flex items-start justify-between mb-3 gap-3">
+                        <div>
+                          <p className="text-white/50 text-xs font-mono">
+                            {entry.timestamp ? new Date(entry.timestamp.toDate()).toLocaleString() : 'No date'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleHistoryExpansion(entry.id)}
+                            className="text-cyan-300 hover:text-cyan-100 text-xs font-semibold uppercase tracking-wider transition-colors"
+                          >
+                            {expandedHistoryIds.includes(entry.id) ? 'Minimize' : 'Expand'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAnalysis(entry.id)}
+                            className="text-red-400 hover:text-red-300 transition duration-150"
+                            title="Delete this entry"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
 
                       {(entry.gameTitle || entry.gameRole) && (
-                        <p className="text-white/80 text-sm mb-2 line-clamp-2">
+                        <p className={`text-white/80 text-sm mb-2 ${expandedHistoryIds.includes(entry.id) ? '' : 'line-clamp-2'} whitespace-pre-wrap break-words`}>
                           <span className="text-cyan-400 font-semibold">Context:</span>{' '}
                           {entry.gameTitle ? entry.gameTitle : 'Unspecified game'}
                           {entry.gameRole ? ` • ${entry.gameRole}` : ''}
                         </p>
                       )}
                       {entry.gameplayText && (
-                        <p className="text-white/80 text-sm mb-2 line-clamp-2">
+                        <p className={`text-white/80 text-sm mb-2 ${expandedHistoryIds.includes(entry.id) ? '' : 'line-clamp-2'} whitespace-pre-wrap break-words`}>
                           <span className="text-cyan-400 font-semibold">Input:</span> {entry.gameplayText}
                         </p>
                       )}
@@ -599,17 +617,33 @@ const Dashboard: React.FC = () => {
                           <p className="text-white/70">
                             <span className="text-green-400 font-semibold">Analysis:</span>
                           </p>
-                          <p className="text-white/60 line-clamp-2">{entry.analysis.analysis}</p>
+                          <p className={`text-white/60 ${expandedHistoryIds.includes(entry.id) ? '' : 'line-clamp-3'} whitespace-pre-wrap break-words`}>
+                            {entry.analysis.analysis}
+                          </p>
 
                           {entry.analysis.suggestions && entry.analysis.suggestions.length > 0 && (
-                            <div>
+                            <div className="space-y-1">
                               <p className="text-yellow-400 font-semibold text-xs">Suggestions ({entry.analysis.suggestions.length})</p>
+                              {expandedHistoryIds.includes(entry.id) ? (
+                                <ul className="list-disc list-inside text-white/70 text-xs space-y-1">
+                                  {entry.analysis.suggestions.map((suggestion, idx) => (
+                                    <li key={idx}>{suggestion}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
                             </div>
                           )}
 
                           {entry.analysis.errorsDetected && entry.analysis.errorsDetected.length > 0 && (
-                            <div>
+                            <div className="space-y-1">
                               <p className="text-red-400 font-semibold text-xs">Errors Detected ({entry.analysis.errorsDetected.length})</p>
+                              {expandedHistoryIds.includes(entry.id) ? (
+                                <ul className="list-disc list-inside text-white/70 text-xs space-y-1">
+                                  {entry.analysis.errorsDetected.map((errorText, idx) => (
+                                    <li key={idx}>{errorText}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
                             </div>
                           )}
                         </div>
