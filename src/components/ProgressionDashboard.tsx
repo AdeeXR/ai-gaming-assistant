@@ -191,7 +191,7 @@ const ProgressionDashboard: React.FC = () => {
   }
 
   const unlockAchievementByName = async (name: string, condition: boolean) => {
-    if (!condition) return;
+    if (!condition || !db || !authUserId) return;
     const achievement = achievements.find((a) => a.name === name);
     if (!achievement || achievement.unlocked) return;
 
