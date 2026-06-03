@@ -184,7 +184,7 @@ const ProgressionDashboard: React.FC = () => {
       unsubscribeImproved();
       unsubscribeAchievements();
     };
-  }, [session?.user?.id, authUserId, db, router, defaultAchievements]);
+  }, [session?.user?.id, authUserId, db, router]);
 
   if (!session?.user?.id || !authUserId) {
     return null;

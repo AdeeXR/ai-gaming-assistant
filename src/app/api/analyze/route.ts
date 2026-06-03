@@ -17,6 +17,10 @@ interface GeminiPart {
     mimeType: string;
     data: string;
   };
+  fileData?: {
+    fileUri: string;
+    mimeType: string;
+  };
 }
 
 async function callGemini(prompt: string, videoFileUri?: string, videoMimeType?: string) {
