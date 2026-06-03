@@ -46,7 +46,7 @@ function parseJson(raw: string) {
   return JSON.parse(raw) as admin.ServiceAccount;
 }
 
-export function parseFirebaseServiceAccountKey(rawKey: string): admin.ServiceAccount {
+export function parseFirebaseServiceAccountKey(rawKey: string): admin.ServiceAccount & { project_id?: string; private_key?: string; client_email?: string } {
   const raw = trimOuterQuotes(rawKey);
   const attempts: Array<{ mode: string; error: unknown }> = [];
 
