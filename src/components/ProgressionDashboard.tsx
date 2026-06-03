@@ -50,19 +50,6 @@ const ProgressionDashboard: React.FC = () => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const defaultAchievements = [
-    { id: 'first_steps', name: 'First Steps', description: 'Complete your first set of gaming objectives.', icon: '🎯' },
-    { id: 'sharpshooter', name: 'Sharpshooter', description: 'Complete 2 objectives to sharpen your focus.', icon: '🎯' },
-    { id: 'momentum_rider', name: 'Momentum Rider', description: 'Complete 3 objectives to build momentum.', icon: '🚀' },
-    { id: 'objective_collector', name: 'Objective Collector', description: 'Complete 5 objectives and collect your progress.', icon: '📦' },
-    { id: 'skill_master', name: 'Skill Master', description: 'Complete 10 objectives successfully.', icon: '⚡' },
-    { id: 'perfectionist', name: 'Perfectionist', description: 'Complete every active objective in a single run.', icon: '💎' },
-    { id: 'consistent_player', name: 'Consistent Player', description: 'Complete 7 objectives to prove consistent improvement.', icon: '🔥' },
-    { id: 'focused_challenger', name: 'Focused Challenger', description: 'Finish 4 objectives with steady progress.', icon: '🧠' },
-    { id: 'quick_learner', name: 'Quick Learner', description: 'Unlock 3 achievements in a short period.', icon: '⚡' },
-    { id: 'game_changer', name: 'Game Changer', description: 'Unlock every achievement in the vault.', icon: '👑' },
-  ];
-
   // Debug logging
   useEffect(() => {
     console.log('ProgressionDashboard mounted:', {
@@ -197,7 +184,7 @@ const ProgressionDashboard: React.FC = () => {
       unsubscribeImproved();
       unsubscribeAchievements();
     };
-  }, [session?.user?.id, authUserId, db, router]);
+  }, [session?.user?.id, authUserId, db, router, defaultAchievements]);
 
   if (!session?.user?.id || !authUserId) {
     return null;
