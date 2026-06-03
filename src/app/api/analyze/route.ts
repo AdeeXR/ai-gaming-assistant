@@ -11,13 +11,21 @@ function createGeminiPrompt(userId: string, gameplayText?: string) {
 }
 
 // Interacts with the content generation engine using a file workspace reference URI
+interface GeminiPart {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+}
+
 async function callGemini(prompt: string, videoFileUri?: string, videoMimeType?: string) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     throw new Error('Server configuration error: GOOGLE_API_KEY environment variable is missing. Get your key from https://aistudio.google.com/apikey');
   }
 
-  const parts: any[] = [{ text: prompt }];
+  const parts: GeminiPart[] = [{ text: prompt }];
   
   if (videoFileUri) {
     parts.push({

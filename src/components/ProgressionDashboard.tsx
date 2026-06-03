@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, QueryConstraint, doc, updateDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, QueryConstraint, doc, updateDoc, serverTimestamp, setDoc, deleteDoc, DocumentReference } from 'firebase/firestore';
 import { useFirebase } from '@/lib/firebase';
 import { Target, Trophy, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
 
@@ -23,6 +23,21 @@ interface Achievement {
   icon: string;
   unlockedAt?: Date;
 }
+
+type AchievementWithRef = Achievement & { ref: DocumentReference };
+
+const defaultAchievements: Achievement[] = [
+  { id: 'first_steps', name: 'First Steps', description: 'Complete your first set of gaming objectives.', icon: '🎯', unlocked: false },
+  { id: 'sharpshooter', name: 'Sharpshooter', description: 'Complete 2 objectives to sharpen your focus.', icon: '🎯', unlocked: false },
+  { id: 'momentum_rider', name: 'Momentum Rider', description: 'Complete 3 objectives to build momentum.', icon: '🚀', unlocked: false },
+  { id: 'objective_collector', name: 'Objective Collector', description: 'Complete 5 objectives and collect your progress.', icon: '📦', unlocked: false },
+  { id: 'skill_master', name: 'Skill Master', description: 'Complete 10 objectives successfully.', icon: '⚡', unlocked: false },
+  { id: 'perfectionist', name: 'Perfectionist', description: 'Complete every active objective in a single run.', icon: '💎', unlocked: false },
+  { id: 'consistent_player', name: 'Consistent Player', description: 'Complete 7 objectives to prove consistent improvement.', icon: '🔥', unlocked: false },
+  { id: 'focused_challenger', name: 'Focused Challenger', description: 'Finish 4 objectives with steady progress.', icon: '🧠', unlocked: false },
+  { id: 'quick_learner', name: 'Quick Learner', description: 'Unlock 3 achievements in a short period.', icon: '⚡', unlocked: false },
+  { id: 'game_changer', name: 'Game Changer', description: 'Unlock every achievement in the vault.', icon: '👑', unlocked: false },
+];
 
 const ProgressionDashboard: React.FC = () => {
   const { data: session } = useSession();
@@ -117,7 +132,7 @@ const ProgressionDashboard: React.FC = () => {
     const unsubscribeAchievements = onSnapshot(
       achievementsQuery,
       async (snapshot) => {
-        const rawAchievements = snapshot.docs.map((doc) => ({
+        const rawAchievements: AchievementWithRef[] = snapshot.docs.map((doc) => ({
           id: doc.id,
           name: doc.data().name || '',
           description: doc.data().description || '',
@@ -127,8 +142,8 @@ const ProgressionDashboard: React.FC = () => {
           ref: doc.ref,
         }));
 
-        const uniqueAchievementsMap = new Map<string, { achievement: Achievement; ref: any }>();
-        const duplicateRefs: any[] = [];
+        const uniqueAchievementsMap = new Map<string, { achievement: Achievement; ref: DocumentReference }>();
+        const duplicateRefs: DocumentReference[] = [];
 
         rawAchievements.forEach((entry) => {
           const existing = uniqueAchievementsMap.get(entry.name);
