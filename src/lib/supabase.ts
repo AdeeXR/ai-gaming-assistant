@@ -4,18 +4,25 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseBucketNameEnv = process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME;
 
-if (!supabaseUrl || !supabaseAnonKey || !supabaseBucketNameEnv) {
-  throw new Error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_BUCKET_NAME');
+function getSupabaseClient() {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
+  return createClient(supabaseUrl, supabaseAnonKey);
 }
 
 const supabaseBucketName = supabaseBucketNameEnv;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 function sanitizeFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
 export async function uploadVideoFileToSupabase(userId: string, file: File) {
+  if (!supabaseBucketName) {
+    throw new Error('Missing Supabase environment variable: NEXT_PUBLIC_SUPABASE_BUCKET_NAME');
+  }
+
+  const supabase = getSupabaseClient();
   const filePath = `${userId}/${Date.now()}_${sanitizeFileName(file.name)}`;
 
   const { error: uploadError } = await supabase.storage
@@ -46,4 +53,3 @@ export async function uploadVideoFileToSupabase(userId: string, file: File) {
   };
 }
 
-export { supabase };
